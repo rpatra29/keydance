@@ -1,0 +1,10 @@
+.build/
+dist/
+.DS_Store
+.venv/
+ml/.venv/
+ml/artifacts/
+Models/*.mlpackage/
+Models/*.mlmodelc/
+__pycache__/
+*.pyc
