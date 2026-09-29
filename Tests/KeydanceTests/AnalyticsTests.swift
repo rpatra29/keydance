@@ -41,33 +41,30 @@ final class AnalyticsTests: XCTestCase {
         XCTAssertEqual(estimator.classify(token: "xylophonic"), .unknown)
     }
 
-    func testSentenceAccuracyCountsUncorrectedSpellingDistance() throws {
-        let estimator = DictionaryEstimator(words: ["i", "really", "like", "this"])
-        var accumulator = SentenceAccuracyAccumulator(checker: SentenceAccuracyChecker(estimator: estimator))
+    func testPassiveAccuracyDoesNotGuessAtUncorrectedSpelling() throws {
+        var accumulator = SentenceAccuracyAccumulator(checker: SentenceAccuracyChecker())
         for character in "I realy like this." { accumulator.record(character) }
 
         let sample = try XCTUnwrap(accumulator.samples.first)
         XCTAssertTrue(sample.isComplete)
-        XCTAssertEqual(sample.spellingErrorCharacters, 1)
+        XCTAssertEqual(sample.spellingErrorCharacters, 0)
         XCTAssertEqual(sample.backspaceErrorCharacters, 0)
         XCTAssertEqual(sample.contextErrorCharacters, 0)
-        XCTAssertLessThan(sample.accuracy, 1)
+        XCTAssertEqual(sample.accuracy, 1)
     }
 
-    func testSentenceAccuracyCatchesTrailingExtraLetter() throws {
-        let estimator = DictionaryEstimator(words: ["say", "saw", "says"])
-        var accumulator = SentenceAccuracyAccumulator(checker: SentenceAccuracyChecker(estimator: estimator))
+    func testPassiveAccuracyDoesNotGuessAtTrailingExtraLetter() throws {
+        var accumulator = SentenceAccuracyAccumulator(checker: SentenceAccuracyChecker())
         for character in "sayu." { accumulator.record(character) }
 
         let sample = try XCTUnwrap(accumulator.samples.first)
-        XCTAssertEqual(sample.spellingErrorCharacters, 1)
-        XCTAssertEqual(accumulator.trace.spellingCandidates, ["sayu → say"])
-        XCTAssertLessThan(sample.accuracy, 1)
+        XCTAssertEqual(sample.spellingErrorCharacters, 0)
+        XCTAssertTrue(accumulator.trace.spellingCandidates.isEmpty)
+        XCTAssertEqual(sample.accuracy, 1)
     }
 
     func testSentenceAccuracyCountsBackspaceCorrectionsEvenWhenFinalWordIsCorrect() throws {
-        let estimator = DictionaryEstimator(words: ["the"])
-        var accumulator = SentenceAccuracyAccumulator(checker: SentenceAccuracyChecker(estimator: estimator))
+        var accumulator = SentenceAccuracyAccumulator(checker: SentenceAccuracyChecker())
         for character in "teh" { accumulator.record(character) }
         accumulator.recordDeletion()
         accumulator.recordDeletion()
@@ -79,19 +76,18 @@ final class AnalyticsTests: XCTestCase {
         XCTAssertEqual(accumulator.totals.errorCharacters, 2)
     }
 
-    func testSentenceAccuracyFindsHighConfidenceWhoHowContextError() throws {
-        let estimator = DictionaryEstimator(words: ["who", "how", "is", "the", "weather", "today"])
-        var accumulator = SentenceAccuracyAccumulator(checker: SentenceAccuracyChecker(estimator: estimator))
+    func testPassiveAccuracyDoesNotInferContextualIntent() throws {
+        var accumulator = SentenceAccuracyAccumulator(checker: SentenceAccuracyChecker())
         for character in "Who is the weather today?" { accumulator.record(character) }
 
         let sample = try XCTUnwrap(accumulator.samples.first)
         XCTAssertEqual(sample.spellingErrorCharacters, 0, "Both words are individually spelled correctly")
-        XCTAssertEqual(sample.contextErrorCharacters, 2, "who -> how has a two-edit distance")
+        XCTAssertEqual(sample.contextErrorCharacters, 0)
+        XCTAssertEqual(sample.accuracy, 1)
     }
 
     func testSentenceAccuracyDoesNotPunishNormalWhoSentenceOrUnknownTerm() throws {
-        let estimator = DictionaryEstimator(words: ["who", "is", "the", "teacher", "today"])
-        var accumulator = SentenceAccuracyAccumulator(checker: SentenceAccuracyChecker(estimator: estimator))
+        var accumulator = SentenceAccuracyAccumulator(checker: SentenceAccuracyChecker())
         for character in "Who is the teacher today?" { accumulator.record(character) }
         for character in " XylophonicTerm." { accumulator.record(character) }
 

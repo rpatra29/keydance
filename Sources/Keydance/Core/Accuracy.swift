@@ -12,9 +12,11 @@ struct SentenceAccuracySample: Sendable, Equatable, Hashable, Identifiable {
         backspaceErrorCharacters + spellingErrorCharacters + contextErrorCharacters
     }
 
+    /// Passive typing has no reference text, so spelling/context accuracy is
+    /// unknowable. This is retained for legacy benchmark display only.
     var accuracy: Double {
         guard characterCount > 0 else { return 1 }
-        return max(0, 1 - Double(errorCharacters) / Double(characterCount))
+        return max(0, 1 - Double(backspaceErrorCharacters) / Double(characterCount))
     }
 }
 
@@ -25,13 +27,11 @@ struct AccuracyTotals: Sendable, Equatable {
     var contextErrorCharacters = 0
     var sentenceCount = 0
 
-    var errorCharacters: Int {
-        backspaceErrorCharacters + spellingErrorCharacters + contextErrorCharacters
-    }
+    var errorCharacters: Int { backspaceErrorCharacters }
 
     var accuracy: Double {
         guard characterCount > 0 else { return 1 }
-        return max(0, 1 - Double(errorCharacters) / Double(characterCount))
+        return max(0, 1 - Double(backspaceErrorCharacters) / Double(characterCount))
     }
 }
 
@@ -44,11 +44,7 @@ struct AccuracyTrace: Sendable, Equatable {
 }
 
 struct SentenceAccuracyChecker {
-    private let estimator: AccuracyEstimating
-
-    init(estimator: AccuracyEstimating) {
-        self.estimator = estimator
-    }
+    init() {}
 
     func evaluate(
         text: String,
@@ -57,20 +53,12 @@ struct SentenceAccuracyChecker {
         id: Int,
         isComplete: Bool
     ) -> SentenceAccuracySample {
-        let tokens = Self.tokens(in: text)
-        let spellingErrors = tokens.reduce(0) { total, token in
-            guard case let .likelyMisspelling(suggestion) = estimator.classify(token: token) else { return total }
-            return total + DictionaryEstimator.editDistance(token, suggestion)
-        }
-        let contextErrors = Self.contextCorrections(in: tokens).reduce(0) { total, correction in
-            total + DictionaryEstimator.editDistance(correction.from, correction.to)
-        }
         return SentenceAccuracySample(
             id: id,
             characterCount: characterCount,
             backspaceErrorCharacters: backspaceErrors,
-            spellingErrorCharacters: spellingErrors,
-            contextErrorCharacters: contextErrors,
+            spellingErrorCharacters: 0,
+            contextErrorCharacters: 0,
             isComplete: isComplete
         )
     }
@@ -82,43 +70,9 @@ struct SentenceAccuracyChecker {
     }
 
     func spellingCandidates(in text: String) -> [String] {
-        Self.tokens(in: text).compactMap { token in
-            guard case let .likelyMisspelling(suggestion) = estimator.classify(token: token) else { return nil }
-            return "\(token) → \(suggestion)"
-        }
+        []
     }
 
-    private struct ContextCorrection {
-        let from: String
-        let to: String
-    }
-
-    /// High-confidence, local confusion rules. Unknown grammar is left alone
-    /// rather than penalizing a writer for a guess we cannot justify.
-    private static func contextCorrections(in tokens: [String]) -> [ContextCorrection] {
-        var corrections: [ContextCorrection] = []
-        for index in tokens.indices {
-            let token = tokens[index]
-            let next = index + 1 < tokens.count ? tokens[index + 1] : nil
-            let nextNext = index + 2 < tokens.count ? tokens[index + 2] : nil
-            let previous = index > tokens.startIndex ? tokens[index - 1] : nil
-
-            if token == "who", next == "is", nextNext == "the",
-               index + 3 < tokens.count, tokens[index + 3] == "weather" {
-                corrections.append(ContextCorrection(from: "who", to: "how"))
-            } else if token == "your", next == "welcome" {
-                corrections.append(ContextCorrection(from: "your", to: "you're"))
-            } else if token == "its", next == "a" {
-                corrections.append(ContextCorrection(from: "its", to: "it's"))
-            } else if token == "to" && (next == "much" || next == "many") {
-                corrections.append(ContextCorrection(from: "to", to: "too"))
-            } else if token == "then",
-                      ["more", "less", "rather", "other", "different"].contains(previous ?? "") {
-                corrections.append(ContextCorrection(from: "then", to: "than"))
-            }
-        }
-        return corrections
-    }
 }
 
 struct SentenceAccuracyAccumulator {

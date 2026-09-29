@@ -42,7 +42,7 @@ struct TypingEngine {
     init(estimator: AccuracyEstimating, pauseClassifier: PauseClassifying = AdaptivePauseClassifier()) {
         self.estimator = estimator
         self.pauseClassifier = pauseClassifier
-        self.accuracy = SentenceAccuracyAccumulator(checker: SentenceAccuracyChecker(estimator: estimator))
+        self.accuracy = SentenceAccuracyAccumulator(checker: SentenceAccuracyChecker())
     }
 
     mutating func consume(_ input: TypingInput) -> SessionSummary? {

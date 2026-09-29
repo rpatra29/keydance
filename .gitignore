@@ -3,8 +3,22 @@ dist/
 .DS_Store
 .venv/
 ml/.venv/
-ml/artifacts/
-Models/*.mlpackage/
+.context/
+# Keep local model-training code/data out of the app repository. The exported
+# Core ML package and its metadata are app assets and remain trackable.
+/ml/*
+!/ml/artifacts/
+/ml/artifacts/*
+!/ml/artifacts/SessionTextTransformer.mlpackage/
+!/ml/artifacts/SessionTextTransformer.mlpackage/**
+!/ml/artifacts/SessionTextTransformer.metadata.json
+# Keep only the final contextual-accuracy model output; other checkpoints and
+# its training/evaluation sources remain local.
+!/ml/artifacts/contextual-accuracy-targeted-v4/
+/ml/artifacts/contextual-accuracy-targeted-v4/*
+!/ml/artifacts/contextual-accuracy-targeted-v4/ContextualAccuracyScorer.pt
+/reports/
+
 Models/*.mlmodelc/
 __pycache__/
 *.pyc
