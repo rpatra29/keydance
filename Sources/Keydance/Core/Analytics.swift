@@ -138,6 +138,12 @@ struct LiveSessionSnapshot: Sendable {
     var hmm: TemporalTrackerDiagnostics
 
     var hasActiveSession: Bool { sessionStartedAt != nil }
+    /// Net WPM subtracts deleted characters from the live gross count.
+    /// It is a correction-adjusted pace proxy, not reference-text accuracy.
+    var netWordsPerMinute: Double {
+        guard printableCount > 0 else { return 0 }
+        return rawWordsPerMinute * Double(max(0, printableCount - deletionCount)) / Double(printableCount)
+    }
     var elapsed: TimeInterval {
         sessionStartedAt.map { max(0, capturedAt.timeIntervalSince($0)) } ?? 0
     }

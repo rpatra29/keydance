@@ -96,7 +96,7 @@ struct DashboardView: View {
                     Text(speed(snapshot.rawWordsPerMinute))
                         .font(.system(size: 34, weight: .bold, design: .rounded))
                         .monospacedDigit()
-                    Text("WPM")
+                    Text("Gross WPM")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
                 }
@@ -104,7 +104,7 @@ struct DashboardView: View {
 
             HStack(spacing: 12) {
                 SessionStat(title: "Characters", value: "\(snapshot.printableCount)", icon: "character.cursor.ibeam")
-                SessionStat(title: "Accuracy", value: accuracyValue, icon: "checkmark.seal")
+                SessionStat(title: "Correction rate", value: correctionRateValue, icon: "delete.left")
                 SessionStat(title: "Session", value: duration(snapshot.elapsed), icon: "clock")
             }
 
@@ -125,10 +125,10 @@ struct DashboardView: View {
     }
 
     private var overviewCards: some View {
-        HStack(alignment: .top, spacing: 16) {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 16) {
             metricCard(
-                title: "Speed",
-                subtitle: "Your pace in this session",
+                title: "Gross speed",
+                subtitle: "All typed characters, including later deletions",
                 icon: "gauge.with.dots.needle.67percent",
                 color: .blue
             ) {
@@ -136,30 +136,49 @@ struct DashboardView: View {
                     Text(speed(snapshot.rawWordsPerMinute))
                         .font(.system(size: 28, weight: .bold, design: .rounded))
                         .monospacedDigit()
-                    Text("WPM")
+                    Text("Gross WPM")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
                 }
-                Text("Based on your timed typing bursts")
+                Text("Includes mistakes and corrections")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             metricCard(
-                title: "Accuracy",
-                subtitle: "Words and corrections",
-                icon: "checkmark.circle",
-                color: .green
+                title: "Net speed",
+                subtitle: "Gross pace adjusted for deleted characters",
+                icon: "gauge.with.dots.needle.33percent",
+                color: .purple
             ) {
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Text(accuracyValue)
+                    Text(speed(snapshot.netWordsPerMinute))
                         .font(.system(size: 28, weight: .bold, design: .rounded))
                         .monospacedDigit()
-                    Text("overall")
+                    Text("Net WPM")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
                 }
-                Text("\(snapshot.accuracyTotals.errorCharacters) recorded errors")
+                Text("Subtracts backspaced characters; not proofread accuracy")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            metricCard(
+                title: "Correction rate",
+                subtitle: "Observable editing activity, not text accuracy",
+                icon: "delete.left",
+                color: .green
+            ) {
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Text(correctionRateValue)
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                    Text("deleted / typed")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+                Text("\(snapshot.deletionCount) characters deleted")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -246,9 +265,9 @@ struct DashboardView: View {
         }
     }
 
-    private var accuracyValue: String {
-        snapshot.accuracyTotals.sentenceCount > 0
-            ? String(format: "%.1f%%", snapshot.accuracyTotals.accuracy * 100)
+    private var correctionRateValue: String {
+        snapshot.printableCount > 0
+            ? String(format: "%.1f%%", Double(snapshot.deletionCount) / Double(snapshot.printableCount) * 100)
             : "—"
     }
 
@@ -367,9 +386,9 @@ private struct BurstRow: View {
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 3) {
-                Text("\(sample.rawWordsPerMinute, specifier: "%.1f") WPM")
+                Text("\(sample.rawWordsPerMinute, specifier: "%.1f") Gross WPM")
                     .font(.subheadline.monospacedDigit().weight(.semibold))
-                Text(sample.intentionalWordsPerMinute.map { "\($0, specifier: "%.1f") focused" } ?? "calculating")
+                Text(sample.intentionalWordsPerMinute.map { "\($0, specifier: "%.1f") Focused WPM" } ?? "Focused WPM · calculating")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
