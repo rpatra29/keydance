@@ -13,7 +13,12 @@ The recommended path builds and opens a signed macOS app bundle:
 ```
 
 On first launch, allow Keydance under **System Settings → Privacy & Security →
-Input Monitoring**. Tracking only runs while Keydance is open.
+Input Monitoring**. Keydance can keep tracking from the menu bar while the
+dashboard window is closed.
+
+The onboarding can be replayed at any time from the Keydance menu-bar icon.
+Dashboard settings are available from the radial navigation control in the
+window; the menu-bar popover stays focused on tracking and quick actions.
 
 For a direct development launch:
 
@@ -25,11 +30,9 @@ Launch-at-login is intended for the bundled app created by `build-app.sh`.
 
 ## Dashboard
 
-The Session tab is the product surface: it shows the current session status,
-gross and deletion-adjusted typing speed, correction rate, session size, and
-recent bursts. The model runs locally and reduces its result to three simple
-states: Typing, Complete, and Unclear. Settings contains tracking, privacy, and
-data-purge controls.
+The dashboard shows an accuracy-adjusted WPM estimate, raw WPM in the details,
+historical daily charts, and comparison insights. Settings contains tracking,
+privacy, history-retention, and data-purge controls.
 
 ## Model and metrics
 
@@ -37,26 +40,24 @@ The runtime combines in-memory text context with timing, pauses, corrections,
 punctuation, shortcuts, navigation, pointer movement, clicks, and scrolling.
 When the exported Core ML model is present, it provides a local signal; a small
 hybrid layer adds sentence-shape evidence before producing the dashboard state.
+The recovered `ContextualAccuracyScorer` transformer also runs locally from a
+native weight resource. It compares completed words with nearby SymSpell
+alternatives and counts only a strong contextual mismatch as a model signal.
 
-Passive typing has no reference text, so Keydance cannot know whether an
-uncorrected word is misspelled or whether a valid word was the one intended.
-The dashboard therefore reports observable deletions as a correction rate;
-the deletion-adjusted WPM is a pace estimate, not proofread accuracy. Benchmark
-typing can report accuracy because it has known reference text.
+Passive typing still has no reference text, so these are estimates rather than
+proofread truth. Raw text remains in memory only and is never persisted.
 
 ## Verify
 
 ```sh
-swift test
 ./scripts/build-app.sh
 codesign --verify --deep --strict dist/Keydance.app
 ```
 
-The tests cover metric math, adaptive pauses, sentence boundaries, the Core ML
-input path, benchmark accuracy, privacy-safe persistence, and vocabulary audits.
+The build script creates and signs the runnable app bundle in `dist/`.
 
 ## Vocabulary
 
-The benchmark vocabulary is derived from the Apache-2.0
-[`brekker23/English-word-frequencies`](https://github.com/brekker23/English-word-frequencies)
-dataset. See `Sources/Keydance/Resources/VOCABULARY_ATTRIBUTION.md`.
+The bundled SymSpell frequency dictionary contains roughly 80,000 common
+English terms and provides the rankings used to select correction candidates.
+See `Sources/Keydance/Resources/VOCABULARY_ATTRIBUTION.md`.

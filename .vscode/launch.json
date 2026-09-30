@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "name": "Debug Keydance",
+            "target": "Keydance",
+            "configuration": "debug"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "name": "Release Keydance",
+            "target": "Keydance",
+            "configuration": "release"
+        }
+    ]
+}

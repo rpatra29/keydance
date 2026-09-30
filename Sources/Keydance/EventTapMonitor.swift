@@ -28,11 +28,11 @@ final class TrackingProcessor: @unchecked Sendable {
     private let onSnapshot: @Sendable (LiveSessionSnapshot) -> Void
 
     init(
-        words: [String],
+        vocabulary: [VocabularyEntry],
         onSummary: @escaping @Sendable (SessionSummary) -> Void,
         onSnapshot: @escaping @Sendable (LiveSessionSnapshot) -> Void = { _ in }
     ) {
-        engine = TypingEngine(estimator: DictionaryEstimator(words: words))
+        engine = TypingEngine(estimator: SymSpellEstimator(entries: vocabulary))
         self.onSummary = onSummary
         self.onSnapshot = onSnapshot
         let timer = DispatchSource.makeTimerSource(queue: queue)

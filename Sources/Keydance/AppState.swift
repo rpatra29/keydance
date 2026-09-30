@@ -6,10 +6,16 @@ import SwiftUI
 
 @MainActor
 final class AppState: ObservableObject {
+    private static let freshCollectionResetKey = "analyticsFreshCollectionResetV1"
+
     @Published var trackerState: TrackerState = .paused
+    @Published var onboardingComplete: Bool {
+        didSet { UserDefaults.standard.set(onboardingComplete, forKey: "onboardingComplete") }
+    }
     @Published var trackingEnabled: Bool {
         didSet { UserDefaults.standard.set(trackingEnabled, forKey: "trackingEnabled") }
     }
+    @Published private(set) var dataRetention: DataRetention
     @Published var launchAtLogin = false
     @Published var lastError: String?
     @Published private(set) var permissionGranted = false
@@ -18,21 +24,32 @@ final class AppState: ObservableObject {
     @Published private(set) var liveSession = LiveSessionSnapshot.idle()
 
     let store: AnalyticsStore
-    let words: [String]
+    let vocabulary: [VocabularyEntry]
     private var processor: TrackingProcessor!
     private var monitor: EventTapMonitor!
     private var healthTimer: AnyCancellable?
 
     init() {
+        onboardingComplete = UserDefaults.standard.bool(forKey: "onboardingComplete")
         trackingEnabled = UserDefaults.standard.object(forKey: "trackingEnabled") as? Bool ?? true
-        words = Vocabulary.load()
+        // Preserve existing history until the user explicitly chooses an
+        // expiration window in Settings.
+        dataRetention = DataRetention(rawValue: UserDefaults.standard.string(forKey: "dataRetention") ?? "") ?? .forever
+        vocabulary = Vocabulary.load()
         do {
             store = try AnalyticsStore()
+            if !UserDefaults.standard.bool(forKey: Self.freshCollectionResetKey) {
+                // The first build with the new analytics model starts a clean
+                // local history. Future launches retain only newly collected data.
+                try store.clearAll()
+                UserDefaults.standard.set(true, forKey: Self.freshCollectionResetKey)
+            }
+            try store.applyRetention(dataRetention)
         } catch {
             fatalError("Unable to create local analytics store: \(error)")
         }
         processor = TrackingProcessor(
-            words: words,
+            vocabulary: vocabulary,
             onSummary: { [weak self] summary in
                 Task { @MainActor [weak self] in self?.persist(summary) }
             },
@@ -73,9 +90,20 @@ final class AppState: ObservableObject {
 
     func requestPermission() {
         if monitor.requestPermission() { monitor.start() }
-        else { trackerState = .permissionRequired }
+        else {
+            trackerState = .permissionRequired
+            openInputMonitoringSettings()
+        }
         permissionGranted = monitor.hasPermission
         eventTapActive = monitor.isRunning
+    }
+
+    func completeOnboarding() {
+        onboardingComplete = true
+    }
+
+    func replayOnboarding() {
+        onboardingComplete = false
     }
 
     func persist(_ summary: SessionSummary) {
@@ -107,6 +135,19 @@ final class AppState: ObservableObject {
                     self.lastError = "Could not clear analytics: \(error.localizedDescription)"
                 }
             }
+        }
+    }
+
+    func updateDataRetention(_ retention: DataRetention) {
+        let previous = dataRetention
+        dataRetention = retention
+        UserDefaults.standard.set(retention.rawValue, forKey: "dataRetention")
+        do {
+            try store.applyRetention(retention)
+        } catch {
+            dataRetention = previous
+            UserDefaults.standard.set(previous.rawValue, forKey: "dataRetention")
+            lastError = "Could not update data retention: \(error.localizedDescription)"
         }
     }
 
@@ -144,18 +185,26 @@ final class AppState: ObservableObject {
 }
 
 enum Vocabulary {
-    static func load() -> [String] {
-        guard let url = resourceURL(named: "words", extension: "txt"),
+    static func load() -> [VocabularyEntry] {
+        guard let url = resourceURL(named: "frequency_dictionary_en_82_765", extension: "txt"),
               let contents = try? String(contentsOf: url, encoding: .utf8) else { return fallback }
-        return contents.split(whereSeparator: \.isNewline).map(String.init).filter { !$0.hasPrefix("#") }
+
+        let entries = contents.split(whereSeparator: \.isNewline).compactMap { line -> VocabularyEntry? in
+            let columns = line.split(whereSeparator: \.isWhitespace)
+            guard columns.count >= 2,
+                  let frequency = Int(columns[1]) else { return nil }
+            let word = String(columns[0]).trimmingCharacters(in: CharacterSet(charactersIn: "\u{FEFF}"))
+            return VocabularyEntry(word: word, frequency: frequency)
+        }
+        return entries.isEmpty ? fallback : entries
     }
 
-    static let fallback = ["about", "after", "again", "could", "every", "first", "great", "house", "other", "people", "right", "small", "their", "there", "these", "thing", "think", "through", "under", "water", "where", "which", "world", "would", "write"]
-
-    static func deniedTerms() -> Set<String> {
-        guard let url = resourceURL(named: "denied_terms", extension: "txt"),
-              let contents = try? String(contentsOf: url, encoding: .utf8) else { return [] }
-        return Set(contents.split(whereSeparator: \.isNewline).map(String.init).filter { !$0.hasPrefix("#") && !$0.isEmpty })
+    static let fallback = [
+        "about", "after", "again", "could", "every", "first", "great", "house",
+        "other", "people", "right", "small", "their", "there", "these", "thing",
+        "think", "through", "under", "water", "where", "which", "world", "would", "write"
+    ].enumerated().map { index, word in
+        VocabularyEntry(word: word, frequency: 1_000 - index)
     }
 
     private static func resourceURL(named name: String, extension fileExtension: String) -> URL? {

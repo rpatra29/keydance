@@ -1,11 +1,12 @@
 # Vocabulary attribution
 
-The bundled benchmark vocabulary is a filtered subset of `word_count.txt` from
-[`brekker23/English-word-frequencies`](https://github.com/brekker23/English-word-frequencies).
-The source repository is licensed under Apache License 2.0 and derives its word
-counts from public-domain books.
+Keydance bundles
+[`frequency_dictionary_en_82_765.txt`](https://github.com/wolfgarbe/SymSpell/blob/master/SymSpell/frequency_dictionary_en_82_765.txt)
+from the official [SymSpell repository](https://github.com/wolfgarbe/SymSpell).
+The file combines Google Books Ngram frequencies with SCOWL vocabulary
+filtering, producing roughly 80,000 common English terms with frequencies for
+ranking correction candidates.
 
-Keydance keeps only source entries that are already lowercase alphabetic words
-of 2–12 characters, removes
-entries in `denied_terms.txt`, and takes the first 1,000 remaining entries in
-frequency order. The list is bundled so the app never needs network access.
+The dictionary is loaded locally at launch and is never modified or sent over
+the network. See the upstream repository for the source-data licenses and
+generation details.

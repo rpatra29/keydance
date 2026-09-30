@@ -132,7 +132,9 @@ struct TemporalSessionTracker {
 
     private let textFallback = TextAwareFallbackClassifier()
     private let textModel = SessionTextModelRuntime.shared
-    private var inferenceBackend = "Text-aware fallback"
+    private var inferenceBackend = SessionTextModelRuntime.shared.status == "Core ML text model loaded"
+        ? "Core ML text model"
+        : "Text-aware fallback"
     private var windowStartedAt: Date?
     private var lastEventAt: Date?
     private var lastTypingEventAt: Date?

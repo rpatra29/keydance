@@ -1,0 +1,134 @@
+{
+  "created_at": "2026-09-29T18:59:37.245999-07:00",
+  "schema_version": 1,
+  "labels": [
+    "writing",
+    "midThought",
+    "sentenceComplete",
+    "finished",
+    "otherActivity"
+  ],
+  "max_tokens": 128,
+  "vocabulary_size": 8192,
+  "numeric_feature_names": [
+    "events_per_second",
+    "printable_per_second",
+    "silence_duration",
+    "sentence_character_count",
+    "word_count",
+    "correction_count",
+    "printable_ratio",
+    "non_typing_ratio"
+  ],
+  "numeric_mean": [
+    2.01990008354187,
+    1.5293529033660889,
+    29.046415328979492,
+    41.89727020263672,
+    97.96794891357422,
+    191.76217651367188,
+    0.4743296504020691,
+    0.23336903750896454
+  ],
+  "numeric_std": [
+    2.5856502056121826,
+    1.9673056602478027,
+    92.44542694091797,
+    73.00220489501953,
+    45.63107681274414,
+    221.92153930664062,
+    0.4548662006855011,
+    0.3690427541732788
+  ],
+  "validation_accuracy": 0.8999811896501275,
+  "per_class_recall": {
+    "writing": 0.9450589083914402,
+    "midThought": 0.7735968047088501,
+    "sentenceComplete": 0.923778664007976,
+    "finished": 0.571715145436309,
+    "otherActivity": 0.9771305040391398
+  },
+  "training_summary": {
+    "samples": 383047,
+    "recordings": 3994,
+    "participants": 3994,
+    "labels": {
+      "otherActivity": 69045,
+      "writing": 135750,
+      "midThought": 98335,
+      "finished": 3991,
+      "sentenceComplete": 75926
+    },
+    "sources": {
+      "klicke": 383047
+    },
+    "label_quality": {
+      "observed": 181957,
+      "observed_idle": 19378,
+      "observed_resume": 98335,
+      "boundary_proxy": 3991,
+      "observed_sentence_pause": 75926,
+      "observed_revision": 3460
+    }
+  },
+  "validation_summary": {
+    "samples": 95692,
+    "recordings": 998,
+    "participants": 998,
+    "labels": {
+      "writing": 33272,
+      "midThought": 23785,
+      "sentenceComplete": 20060,
+      "otherActivity": 17578,
+      "finished": 997
+    },
+    "sources": {
+      "klicke": 95692
+    },
+    "label_quality": {
+      "observed": 45172,
+      "observed_resume": 23785,
+      "observed_sentence_pause": 20060,
+      "observed_revision": 844,
+      "boundary_proxy": 997,
+      "observed_idle": 4834
+    }
+  },
+  "confusion_matrix_rows_expected_columns_predicted": [
+    [
+      31444,
+      1203,
+      592,
+      7,
+      26
+    ],
+    [
+      628,
+      18400,
+      366,
+      3229,
+      1162
+    ],
+    [
+      63,
+      79,
+      18531,
+      866,
+      521
+    ],
+    [
+      0,
+      57,
+      370,
+      570,
+      0
+    ],
+    [
+      0,
+      164,
+      238,
+      0,
+      17176
+    ]
+  ]
+}
