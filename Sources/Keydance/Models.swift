@@ -40,6 +40,8 @@ final class SessionRecord {
     var backspaceErrorCharacters: Int = 0
     var spellingErrorCharacters: Int = 0
     var grammarErrorCharacters: Int = 0
+    var spellingErrorWords: Int = 0
+    var contextErrorWords: Int = 0
     var accuracySampleCount: Int = 0
 
     init(summary: SessionSummary) {
@@ -66,6 +68,8 @@ final class SessionRecord {
         backspaceErrorCharacters = summary.accuracyTotals.backspaceErrorCharacters
         spellingErrorCharacters = summary.accuracyTotals.spellingErrorCharacters
         grammarErrorCharacters = summary.accuracyTotals.contextErrorCharacters
+        spellingErrorWords = summary.accuracyTotals.spellingErrorWords
+        contextErrorWords = summary.accuracyTotals.contextErrorWords
         accuracySampleCount = summary.accuracyTotals.sentenceCount
     }
 
@@ -91,6 +95,10 @@ final class DailyRollup {
     var midPauseDuration: TimeInterval
     var betweenPauseCount: Int
     var betweenPauseDuration: TimeInterval
+    var spellingErrorCharactersTotal: Int = 0
+    var contextErrorCharactersTotal: Int = 0
+    var spellingErrorWordsTotal: Int = 0
+    var contextErrorWordsTotal: Int = 0
 
     init(day: Date) {
         self.day = day; sessionCount = 0; benchmarkCount = 0; characterTotal = 0; correctTotal = 0
@@ -109,6 +117,10 @@ final class DailyRollup {
         correctTotal += max(0, accuracyCharacters - accuracyErrors)
         errorTotal += accuracyErrors
         deletionTotal += record.deletionCount; coveredTotal += accuracyCharacters
+        spellingErrorCharactersTotal += record.spellingErrorCharacters
+        contextErrorCharactersTotal += record.grammarErrorCharacters
+        spellingErrorWordsTotal += record.spellingErrorWords
+        contextErrorWordsTotal += record.contextErrorWords
         activeDuration += record.activeDuration; elapsedDuration += record.endedAt.timeIntervalSince(record.startedAt)
         midPauseCount += record.midPauseCount; midPauseDuration += record.midPauseTotal
         betweenPauseCount += record.betweenPauseCount; betweenPauseDuration += record.betweenPauseTotal

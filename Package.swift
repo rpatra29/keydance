@@ -12,11 +12,6 @@ let package = Package(
             name: "Keydance",
             resources: [.process("Resources")],
             swiftSettings: [.swiftLanguageMode(.v5)]
-        ),
-        .testTarget(
-            name: "KeydanceTests",
-            dependencies: ["Keydance"],
-            swiftSettings: [.swiftLanguageMode(.v5)]
         )
     ]
 )

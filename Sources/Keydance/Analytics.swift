@@ -76,11 +76,17 @@ struct SessionSummary: Sendable {
     var sentenceAccuracySamples: [SentenceAccuracySample] = []
 
     var elapsed: TimeInterval { max(endedAt.timeIntervalSince(startedAt), 0.001) }
-    var wordsPerMinute: Double { Double(kind == .benchmark ? correctCount : printableCount) / 5 / (elapsed / 60) }
+    /// Passive typing has no reference text, so its Monkeytype-style WPM uses
+    /// every measured character, including spaces. Accuracy remains a
+    /// separate metric instead of shrinking the displayed typing speed.
+    var measuredCharacterCount: Int {
+        kind == .benchmark ? correctCount : max(printableCount, accuracyTotals.characterCount)
+    }
+    var wordsPerMinute: Double { Double(measuredCharacterCount) / 5 / (elapsed / 60) }
     /// Pace across the intentional writing session, including thinking pauses
     /// but ending when the session boundary is inferred or explicitly chosen.
     var writingWordsPerMinute: Double { wordsPerMinute }
-    var charactersPerMinute: Double { Double(kind == .benchmark ? correctCount : printableCount) / (elapsed / 60) }
+    var charactersPerMinute: Double { Double(measuredCharacterCount) / (elapsed / 60) }
     var accuracy: Double {
         if kind == .benchmark {
             return printableCount > 0 ? Double(max(0, printableCount - incorrectCount)) / Double(printableCount) : 1
@@ -144,6 +150,26 @@ struct LiveSessionSnapshot: Sendable {
         guard printableCount > 0 else { return 0 }
         return rawWordsPerMinute * Double(max(0, printableCount - deletionCount)) / Double(printableCount)
     }
+    /// Live pace adjusted by the accuracy signal available from the local model.
+    var accuracyAdjustedWordsPerMinute: Double {
+        rawWordsPerMinute * liveAccuracy
+    }
+    var liveAccuracy: Double {
+        let currentCharacters = accuracyTrace.currentText.reduce(into: 0) { count, character in
+            if !character.isWhitespace && !character.unicodeScalars.allSatisfy({ $0.properties.generalCategory == .control }) {
+                count += 1
+            }
+        }
+        let currentSpellingErrors = accuracyTrace.spellingErrorCharacters
+        let currentContextErrors = accuracyTrace.contextErrorCharacters
+        let measuredCharacters = accuracyTotals.characterCount + currentCharacters
+        let measuredErrors = accuracyTotals.errorCharacters
+            + accuracyTrace.backspaceErrors
+            + currentSpellingErrors
+            + currentContextErrors
+        guard measuredCharacters > 0 else { return 1 }
+        return max(0, 1 - Double(measuredErrors) / Double(measuredCharacters))
+    }
     var elapsed: TimeInterval {
         sessionStartedAt.map { max(0, capturedAt.timeIntervalSince($0)) } ?? 0
     }
@@ -162,7 +188,7 @@ struct LiveSessionSnapshot: Sendable {
             intentionalCharacterCount: 0, intentionalDuration: 0,
             timingPaused: false,
             accuracyTotals: AccuracyTotals(),
-            accuracyTrace: AccuracyTrace(currentText: "", currentTokens: [], spellingCandidates: [], backspaceErrors: 0, lastSample: nil),
+            accuracyTrace: AccuracyTrace(currentText: "", currentTokens: [], spellingCandidates: [], contextCandidates: [], spellingErrorCharacters: 0, contextErrorCharacters: 0, backspaceErrors: 0, lastSample: nil),
             sentenceAccuracySamples: [],
             sentenceSpeeds: [],
             hmm: TemporalTrackerDiagnostics(

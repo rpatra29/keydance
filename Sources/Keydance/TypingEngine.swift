@@ -42,7 +42,7 @@ struct TypingEngine {
     init(estimator: AccuracyEstimating, pauseClassifier: PauseClassifying = AdaptivePauseClassifier()) {
         self.estimator = estimator
         self.pauseClassifier = pauseClassifier
-        self.accuracy = SentenceAccuracyAccumulator(checker: SentenceAccuracyChecker())
+        self.accuracy = SentenceAccuracyAccumulator(checker: SentenceAccuracyChecker(estimator: estimator))
     }
 
     mutating func consume(_ input: TypingInput) -> SessionSummary? {
@@ -165,7 +165,10 @@ struct TypingEngine {
             coveredCharacters += currentToken.count
             uncorrectedEstimate += 1
         case .unknown:
-            break
+            if estimator.isLikelyGibberish(token: currentToken) {
+                coveredCharacters += currentToken.count
+                uncorrectedEstimate += 1
+            }
         }
     }
 
