@@ -61,6 +61,7 @@ final class SymSpellEstimator: AccuracyEstimating {
     func classify(token: String) -> TokenClassification {
         let token = Self.normalize(token)
         guard Self.isWord(token), token.count >= 2 else { return .unknown }
+        guard !WordWhitelist.contains(token) else { return .known }
         guard terms[token] == nil else { return .known }
 
         let candidates = lookup(token)

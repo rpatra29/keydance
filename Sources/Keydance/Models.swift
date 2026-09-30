@@ -135,9 +135,10 @@ final class DailyKeyAggregate {
     @Attribute(.unique) var day: Date
     var keyStatsData: Data
     var confusionsData: Data
+    var wordInsightsData: Data = Data()
 
     init(day: Date) {
-        self.day = day; keyStatsData = Data(); confusionsData = Data()
+        self.day = day; keyStatsData = Data(); confusionsData = Data(); wordInsightsData = Data()
     }
 
     var keyStats: [KeyAggregate] {
@@ -150,7 +151,16 @@ final class DailyKeyAggregate {
         set { confusionsData = (try? JSONEncoder().encode(newValue)) ?? Data() }
     }
 
-    func merge(keyStats incomingKeys: [KeyAggregate], confusions incomingConfusions: [ConfusionAggregate]) {
+    var wordInsights: [WordInsight] {
+        get { (try? JSONDecoder().decode([WordInsight].self, from: wordInsightsData)) ?? [] }
+        set { wordInsightsData = (try? JSONEncoder().encode(newValue)) ?? Data() }
+    }
+
+    func merge(
+        keyStats incomingKeys: [KeyAggregate],
+        confusions incomingConfusions: [ConfusionAggregate],
+        wordInsights incomingInsights: [WordInsight] = []
+    ) {
         var keys = Dictionary(uniqueKeysWithValues: keyStats.map { ($0.key, $0) })
         for item in incomingKeys {
             keys[item.key, default: KeyAggregate(key: item.key)].activity += item.activity
@@ -164,5 +174,25 @@ final class DailyKeyAggregate {
             pairs[id, default: ConfusionAggregate(from: item.from, to: item.to)].count += item.count
         }
         confusions = Array(pairs.values)
+
+        var insights = Dictionary(uniqueKeysWithValues: wordInsights.map { ($0.id, $0) })
+        for item in incomingInsights {
+            var aggregate = insights[item.id] ?? item
+            if insights[item.id] != nil {
+                aggregate.count += item.count
+                aggregate.totalDuration += item.totalDuration
+                aggregate.editDistance += item.editDistance
+            }
+            insights[item.id] = aggregate
+        }
+        wordInsights = WordInsightKind.allCases.flatMap { kind in
+            insights.values
+                .filter { $0.kind == kind }
+                .sorted {
+                    if $0.count != $1.count { return $0.count > $1.count }
+                    return $0.word < $1.word
+                }
+                .prefix(24)
+        }
     }
 }

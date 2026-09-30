@@ -4,12 +4,18 @@ import SwiftUI
 
 struct DashboardView: View {
     @EnvironmentObject private var state: AppState
+    let onOpenTypingInsights: () -> Void
     @State private var showingDetails = false
     @State private var hoveringDetails = false
     @State private var hoveredMetricTitle: String?
     @State private var hoveredStatisticTitle: String?
     @State private var hoveredHeatmapCell: String?
     @State private var showingEditDistanceInfo = false
+    @State private var shortTermInsightFlipped = false
+
+    init(onOpenTypingInsights: @escaping () -> Void = {}) {
+        self.onOpenTypingInsights = onOpenTypingInsights
+    }
 
     private var snapshot: LiveSessionSnapshot { state.liveSession }
     private var historyPoints: [HistoricalMetricPoint] { state.store.historicalPoints }
@@ -39,20 +45,21 @@ struct DashboardView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 14) {
-            DashboardLogo(width: 48)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text("keydance")
-                    .font(.system(size: 17, weight: .medium, design: .rounded))
-                    .foregroundStyle(DashboardTheme.text)
-                Text("Your typing, at a glance")
-                    .font(.system(size: 24, weight: .regular, design: .rounded))
-                    .foregroundStyle(DashboardTheme.secondary)
-            }
-
-            Spacer()
+        VStack(alignment: .leading, spacing: 4) {
+            (Text("Your typing")
+                .foregroundStyle(DashboardTheme.text)
+             + Text(" at a glance")
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [DashboardTheme.blue, DashboardTheme.purple],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                ))
+                .font(.system(size: 44, weight: .bold, design: .rounded))
         }
+        .frame(maxWidth: .infinity)
+        .multilineTextAlignment(.leading)
     }
 
     private var permissionNotice: some View {
@@ -106,24 +113,48 @@ struct DashboardView: View {
         unit: String,
         color: Color
     ) -> some View {
-        VStack(spacing: 9) {
-            Text(title)
-                .font(.system(size: 14, weight: .medium, design: .rounded))
-                .foregroundStyle(DashboardTheme.secondary)
+        HStack(alignment: .center, spacing: 18) {
+            VStack(spacing: 9) {
+                Text(title)
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(DashboardTheme.secondary)
 
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                MetricValueText(value: value, color: color, size: 64, dimDecimals: true, decimalScale: 0.62)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    MetricValueText(value: value, color: color, size: 64, dimDecimals: true, decimalScale: 0.62)
+                }
+
+                Text(unit)
+                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                    .foregroundStyle(DashboardTheme.secondary)
             }
 
-            Text(unit)
-                .font(.system(size: 13, weight: .regular, design: .rounded))
-                .foregroundStyle(DashboardTheme.secondary)
+            if hoveredMetricTitle == title {
+                Text(metricExplanation(for: title))
+                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                    .foregroundStyle(DashboardTheme.secondary)
+                    .multilineTextAlignment(.leading)
+                    .frame(width: 190, alignment: .leading)
+                    .transition(.opacity.combined(with: .move(edge: .trailing)))
+            }
         }
-        .frame(maxWidth: .infinity)
-        .scaleEffect(hoveredMetricTitle == title ? 1.025 : 1)
+        .frame(maxWidth: .infinity, minHeight: 130)
+        .contentShape(Rectangle())
+        .scaleEffect(hoveredMetricTitle == title ? 1.035 : 1)
+        .offset(x: hoveredMetricTitle == title ? -14 : 0)
         .animation(.easeOut(duration: 0.16), value: hoveredMetricTitle == title)
         .onHover { isHovering in
             hoveredMetricTitle = isHovering ? title : nil
+        }
+    }
+
+    private func metricExplanation(for title: String) -> String {
+        switch title {
+        case "WPM":
+            return "Your typing speed with respect to accuracy. The more words you misspell, the lower your WPM becomes."
+        case "Accuracy":
+            return "Your accuracy calculated using a combination of machine learning and dictionary-search algorithms. Whitelist names and acronyms in the typing insights panel."
+        default:
+            return ""
         }
     }
 
@@ -481,13 +512,115 @@ struct DashboardView: View {
     }
 
     private var shortTermInsight: some View {
-        insightCard(
-            title: "Short-term insight",
-            color: DashboardTheme.mint,
-            message: "Coming soon — this will surface patterns from your most recent sessions."
-        ) {
-            insightUnavailable(color: DashboardTheme.mint)
+        Button {
+            onOpenTypingInsights()
+        } label: {
+            ZStack {
+                shortTermInsightFront
+                    .opacity(shortTermInsightFlipped ? 0 : 1)
+                    .rotation3DEffect(
+                        .degrees(shortTermInsightFlipped ? 180 : 0),
+                        axis: (x: 0, y: 1, z: 0)
+                    )
+
+                shortTermInsightBack
+                    .opacity(shortTermInsightFlipped ? 1 : 0)
+                    .rotation3DEffect(
+                        .degrees(shortTermInsightFlipped ? 0 : -180),
+                        axis: (x: 0, y: 1, z: 0)
+                    )
+            }
+            .frame(maxWidth: .infinity, minHeight: 92, alignment: .topLeading)
+            .padding(14)
+            .background(DashboardTheme.panel.opacity(0.10), in: RoundedRectangle(cornerRadius: 14))
+            .threeSidedBorder()
         }
+        .buttonStyle(.plain)
+        .contentShape(RoundedRectangle(cornerRadius: 14))
+        .onHover { isHovering in
+            withAnimation(.easeInOut(duration: 0.35)) {
+                shortTermInsightFlipped = isHovering
+            }
+        }
+        .help("Open typing insights")
+    }
+
+    private var shortTermInsightFront: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Short-term insight")
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundStyle(DashboardTheme.secondary)
+
+            HStack(spacing: 16) {
+                if topKeyLabel != "—" {
+                    shortTermMetric(value: topKeyLabel, label: "top key", color: DashboardTheme.mint)
+                }
+                if insightMisspellingCount > 0 {
+                    shortTermMetric(value: "\(insightMisspellingCount)", label: "spelling flags", color: DashboardTheme.blue)
+                }
+                if insightPatternCount > 0 {
+                    shortTermMetric(value: "\(insightPatternCount)", label: "friction signals", color: DashboardTheme.purple)
+                }
+                if topKeyLabel == "—", insightMisspellingCount == 0, insightPatternCount == 0 {
+                    Text("Collecting your first useful signals")
+                        .font(.system(size: 12, design: .rounded))
+                        .foregroundStyle(DashboardTheme.muted)
+                }
+            }
+        }
+    }
+
+    private var shortTermInsightBack: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Explore your typing patterns")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(DashboardTheme.text)
+                Text("Click to visit Typing insights for the full heatmap, word signals, and whitelist.")
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundStyle(DashboardTheme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer()
+            Image(systemName: "arrow.right.circle.fill")
+                .font(.system(size: 20))
+                .foregroundStyle(DashboardTheme.mint)
+        }
+    }
+
+    private func shortTermMetric(value: String, label: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(value)
+                .font(.system(size: 21, weight: .medium, design: .rounded))
+                .foregroundStyle(color)
+                .monospacedDigit()
+            Text(label)
+                .font(.system(size: 10, design: .rounded))
+                .foregroundStyle(DashboardTheme.muted)
+        }
+    }
+
+    private var topKeyLabel: String {
+        let key = state.store.keyAggregates
+            .flatMap(\.keyStats)
+            .max { $0.activity < $1.activity }?.key
+        return key?.uppercased() ?? "—"
+    }
+
+    private var insightMisspellingCount: Int {
+        insightWordData
+            .filter { $0.kind == .misspelling }
+            .reduce(0) { $0 + $1.count }
+    }
+
+    private var insightPatternCount: Int {
+        insightWordData
+            .filter { $0.kind == .slowWord || $0.kind == .doubleLetter }
+            .reduce(0) { $0 + $1.count }
+    }
+
+    private var insightWordData: [WordInsight] {
+        state.store.recentWordInsights.isEmpty ? state.store.wordInsights : state.store.recentWordInsights
     }
 
     private func insightCard<Visual: View>(

@@ -1,6 +1,13 @@
 .build/
 dist/
 .DS_Store
+.vscode/
+.idea/
+.swiftpm/
+xcuserdata/
+DerivedData/
+*.swp
+*.swo
 .venv/
 ml/.venv/
 .context/

@@ -88,6 +88,7 @@ private struct TopWindowFade: View {
 
 private enum WorkspaceSection: String, CaseIterable, Identifiable {
     case dashboard
+    case insights
     case settings
 
     var id: String { rawValue }
@@ -95,6 +96,7 @@ private enum WorkspaceSection: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .dashboard: return "Dashboard"
+        case .insights: return "Typing insights"
         case .settings: return "Settings"
         }
     }
@@ -102,6 +104,7 @@ private enum WorkspaceSection: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .dashboard: return "rectangle.3.group"
+        case .insights: return "waveform.path.ecg"
         case .settings: return "slider.horizontal.3"
         }
     }
@@ -116,7 +119,9 @@ private struct WorkspaceView: View {
             Group {
                 switch selection {
                 case .dashboard:
-                    DashboardView()
+                    DashboardView { selection = .insights }
+                case .insights:
+                    TypingInsightsView()
                 case .settings:
                     SettingsView()
                         .frame(maxWidth: 720, maxHeight: .infinity, alignment: .leading)
@@ -131,55 +136,71 @@ private struct WorkspaceView: View {
                 .allowsHitTesting(false)
                 .zIndex(1)
 
-            RadialNavigation(selection: $selection, isExpanded: $navigationExpanded)
+            WorkspaceNavigation(selection: $selection, isExpanded: $navigationExpanded)
                 .padding(.leading, 18)
                 .padding(.top, 18)
+                .zIndex(2)
+
+            HStack(spacing: 8) {
+                Text("keydance")
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .foregroundStyle(DashboardTheme.secondary)
+                DashboardLogo(width: 44)
+            }
+                .padding(.trailing, 26)
+                .padding(.top, 18)
+                .frame(maxWidth: .infinity, alignment: .topTrailing)
                 .zIndex(2)
         }
         .background(DashboardTheme.background)
     }
 }
 
-private struct RadialNavigation: View {
+private struct WorkspaceNavigation: View {
     @Binding var selection: WorkspaceSection
     @Binding var isExpanded: Bool
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
+        HStack(spacing: 3) {
             if isExpanded {
-                radialOption(.dashboard, symbol: "rectangle.3.group", offset: CGSize(width: 58, height: -24))
-                radialOption(.settings, symbol: "gearshape.fill", offset: CGSize(width: 58, height: 24))
+                navigationOption(.dashboard, symbol: "rectangle.3.group")
+                navigationOption(.insights, symbol: "waveform.path.ecg")
+                navigationOption(.settings, symbol: "gearshape.fill")
             }
 
             Button {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
-                    isExpanded.toggle()
-                }
+                withAnimation(.easeOut(duration: 0.18)) { isExpanded.toggle() }
             } label: {
-                Image(systemName: isExpanded ? "xmark" : "ellipsis")
-                    .font(.system(size: 16, weight: .semibold))
+                Image(systemName: isExpanded ? "chevron.left" : sectionSymbol)
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(DashboardTheme.text)
-                    .frame(width: 42, height: 42)
-                    .background(DashboardTheme.panel.opacity(0.9), in: Circle())
-                    .overlay {
-                        Circle().strokeBorder(DashboardTheme.divider, lineWidth: 1)
-                    }
-                    .shadow(color: .black.opacity(0.24), radius: 12, y: 5)
+                    .frame(width: 36, height: 30)
+                    .background(DashboardTheme.blue.opacity(isExpanded ? 0.12 : 0.24), in: Capsule())
             }
             .buttonStyle(.plain)
-            .help("Navigation")
-            .zIndex(2)
+            .help(isExpanded ? "Collapse navigation" : "Expand navigation")
         }
-        .frame(width: 122, height: 82, alignment: .topLeading)
+        .padding(5)
+        .background(.ultraThinMaterial, in: Capsule())
+        .background(DashboardTheme.panel.opacity(0.72), in: Capsule())
+        .overlay { Capsule().strokeBorder(DashboardTheme.divider, lineWidth: 1) }
+        .shadow(color: .black.opacity(0.24), radius: 12, y: 5)
     }
 
-    private func radialOption(
+    private var sectionSymbol: String {
+        switch selection {
+        case .dashboard: return "rectangle.3.group"
+        case .insights: return "waveform.path.ecg"
+        case .settings: return "gearshape.fill"
+        }
+    }
+
+    private func navigationOption(
         _ section: WorkspaceSection,
-        symbol: String,
-        offset: CGSize
+        symbol: String
     ) -> some View {
         Button {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+            withAnimation(.easeOut(duration: 0.18)) {
                 selection = section
                 isExpanded = false
             }
@@ -187,22 +208,16 @@ private struct RadialNavigation: View {
             Image(systemName: symbol)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(selection == section ? DashboardTheme.text : DashboardTheme.secondary)
-                .frame(width: 34, height: 34)
-                .background(
-                    selection == section ? DashboardTheme.panel.opacity(0.88) : DashboardTheme.panel.opacity(0.62),
-                    in: Circle()
-                )
+                .frame(width: 36, height: 30)
+                .background(selection == section ? DashboardTheme.blue.opacity(0.24) : .clear, in: Capsule())
                 .overlay {
-                    Circle().strokeBorder(
-                        selection == section ? DashboardTheme.blue.opacity(0.7) : DashboardTheme.divider,
-                        lineWidth: 1
-                    )
+                    if selection == section {
+                        Capsule().strokeBorder(DashboardTheme.blue.opacity(0.7), lineWidth: 1)
+                    }
                 }
         }
         .buttonStyle(.plain)
         .help(section.title)
-        .offset(offset)
-        .transition(.scale(scale: 0.4).combined(with: .opacity))
     }
 }
 

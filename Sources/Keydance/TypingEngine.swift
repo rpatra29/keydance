@@ -38,6 +38,9 @@ struct TypingEngine {
     private var betweenSentencePauses: [TimeInterval] = []
     private var keyStats: [String: KeyAggregate] = [:]
     private var confusions: [String: ConfusionAggregate] = [:]
+    private var wordInsights: [String: WordInsight] = [:]
+    private var currentWordStartedAt: Date?
+    private var currentWordLastAt: Date?
 
     init(estimator: AccuracyEstimating, pauseClassifier: PauseClassifying = AdaptivePauseClassifier()) {
         self.estimator = estimator
@@ -115,8 +118,14 @@ struct TypingEngine {
                 keyStats[old, default: KeyAggregate(key: old)].corrected += 1
                 self.deletedCharacter = nil
             }
-            if character.isLetter { currentToken.append(character.lowercased()) }
-            else { finishToken(); currentToken = "" }
+            if character.isLetter {
+                if currentToken.isEmpty { currentWordStartedAt = date }
+                currentToken.append(character.lowercased())
+                currentWordLastAt = date
+            } else {
+                finishToken(at: date)
+                currentToken = ""
+            }
             lastCharacter = character
         case .deletion:
             guard startedAt != nil else { break }
@@ -133,7 +142,7 @@ struct TypingEngine {
             writingContext.recordBoundary(character, at: date)
             accuracy.record(character)
             boundaryCount += 1
-            finishToken()
+            finishToken(at: date)
             currentToken = ""
             lastCharacter = character
             deletedCharacter = nil
@@ -156,20 +165,67 @@ struct TypingEngine {
         if startedAt != nil { lastInputAt = date }
     }
 
-    private mutating func finishToken() {
+    private mutating func finishToken(at date: Date) {
         guard !currentToken.isEmpty else { return }
-        switch estimator.classify(token: currentToken) {
+        let token = currentToken
+        let duration = max(0, (currentWordLastAt ?? date).timeIntervalSince(currentWordStartedAt ?? date))
+        recordWordInsight(token: token, duration: duration)
+        switch estimator.classify(token: token) {
         case .known:
-            coveredCharacters += currentToken.count
-        case .likelyMisspelling:
-            coveredCharacters += currentToken.count
+            coveredCharacters += token.count
+        case let .likelyMisspelling(suggestion, editDistance):
+            coveredCharacters += token.count
             uncorrectedEstimate += 1
+            recordInsight(WordInsight(
+                kind: .misspelling,
+                word: token,
+                suggestion: suggestion,
+                count: 1,
+                totalDuration: duration,
+                editDistance: editDistance
+            ))
         case .unknown:
-            if estimator.isLikelyGibberish(token: currentToken) {
-                coveredCharacters += currentToken.count
+            if estimator.isLikelyGibberish(token: token) {
+                coveredCharacters += token.count
                 uncorrectedEstimate += 1
             }
         }
+        currentWordStartedAt = nil
+        currentWordLastAt = nil
+    }
+
+    private mutating func recordWordInsight(token: String, duration: TimeInterval) {
+        recordInsight(WordInsight(kind: .frequentWord, word: token, suggestion: "", count: 1, totalDuration: duration))
+
+        let secondsPerCharacter = duration / Double(max(token.count - 1, 1))
+        if token.count >= 3, duration >= 0.45, secondsPerCharacter >= 0.22 {
+            recordInsight(WordInsight(kind: .slowWord, word: token, suggestion: "", count: 1, totalDuration: duration))
+        }
+
+        let characters = Array(token)
+        if characters.count >= 2 {
+            for index in 0..<(characters.count - 1) where characters[index] == characters[index + 1] {
+                if secondsPerCharacter >= 0.18 {
+                    recordInsight(WordInsight(
+                        kind: .doubleLetter,
+                        word: String(characters[index...index + 1]),
+                        suggestion: token,
+                        count: 1,
+                        totalDuration: duration
+                    ))
+                }
+            }
+        }
+    }
+
+    private mutating func recordInsight(_ insight: WordInsight) {
+        var aggregate = wordInsights[insight.id] ?? insight
+        if wordInsights[insight.id] != nil {
+            aggregate.count += insight.count
+            aggregate.totalDuration += insight.totalDuration
+            aggregate.editDistance += insight.editDistance
+        }
+        wordInsights[insight.id] = aggregate
     }
 
     mutating func advance(to date: Date = .now) -> SessionSummary? {
@@ -188,7 +244,7 @@ struct TypingEngine {
 
     private mutating func makeSummary(endingAt date: Date) -> SessionSummary {
         let startedAt = self.startedAt!
-        finishToken()
+        finishToken(at: lastInputAt ?? date)
         accuracy.finishPending()
         let accuracyTotals = accuracy.totals
         return SessionSummary(
@@ -200,6 +256,7 @@ struct TypingEngine {
             activeDuration: activeDuration, midSentencePauses: midSentencePauses,
             betweenSentencePauses: betweenSentencePauses,
             keyStats: Array(keyStats.values), confusions: Array(confusions.values),
+            wordInsights: Array(wordInsights.values),
             observationWindows: stateTracker.observations,
             hmmModelVersion: TemporalSessionTracker.modelVersion,
             modelBackend: stateTracker.inferenceBackendName,
@@ -210,6 +267,8 @@ struct TypingEngine {
 
     mutating func clearEphemeral() {
         currentToken = ""
+        currentWordStartedAt = nil
+        currentWordLastAt = nil
         deletedCharacter = nil
         lastCharacter = nil
         accuracy.reset()
@@ -258,7 +317,8 @@ struct TypingEngine {
         startedAt = nil; lastInputAt = nil; lastTypingInputAt = nil; currentToken = ""; lastCharacter = nil; deletedCharacter = nil
         recentIntervals = []; printableCount = 0; boundaryCount = 0; deletionCount = 0; correctedErrors = 0
         uncorrectedEstimate = 0; coveredCharacters = 0; activeDuration = 0; timedWritingDuration = 0; timingPaused = false
-        midSentencePauses = []; betweenSentencePauses = []; keyStats = [:]; confusions = [:]
+        midSentencePauses = []; betweenSentencePauses = []; keyStats = [:]; confusions = [:]; wordInsights = [:]
+        currentWordStartedAt = nil; currentWordLastAt = nil
         accuracy.reset()
         writingContext.reset()
         stateTracker.reset()
