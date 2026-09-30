@@ -1,8 +1,10 @@
 # Keydance
 
 Keydance is a local-only macOS 14+ typing analytics app. It measures timing,
-corrections, sentence speed, and editing activity without persisting typed text,
-app identity, window titles, clipboard contents, or ordered key history.
+corrections, sentence speed, and editing activity without persisting sentences,
+app identity, window titles, clipboard contents, or ordered key history. The
+optional Insights surface stores only bounded daily counters for a small set of
+frequent/flagged words and typing patterns; raw text remains in memory only.
 
 ## Run
 
@@ -31,8 +33,10 @@ Launch-at-login is intended for the bundled app created by `build-app.sh`.
 ## Dashboard
 
 The dashboard shows an accuracy-adjusted WPM estimate, raw WPM in the details,
-historical daily charts, and comparison insights. Settings contains tracking,
-privacy, history-retention, and data-purge controls.
+historical daily charts, and comparison insights. Typing insights adds a
+collapsible navigation page with a keyboard heatmap, misspelling whitelist,
+frequent/slow word patterns, and double-letter signals. Settings contains
+tracking, privacy, history-retention, and data-purge controls.
 
 ## Model and metrics
 

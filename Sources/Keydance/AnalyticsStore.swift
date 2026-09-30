@@ -63,6 +63,40 @@ final class AnalyticsStore: ObservableObject {
     @Published private(set) var keyAggregates: [DailyKeyAggregate] = []
     @Published private(set) var historicalPoints: [HistoricalMetricPoint] = []
 
+    var wordInsights: [WordInsight] {
+        mergedWordInsights(from: keyAggregates)
+    }
+
+    var recentWordInsights: [WordInsight] {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -14, to: .now)
+            .map { Calendar.current.startOfDay(for: $0) }
+        let recentAggregates = keyAggregates.filter { aggregate in
+            guard let cutoff else { return true }
+            return aggregate.day >= cutoff
+        }
+        return mergedWordInsights(from: recentAggregates)
+    }
+
+    private func mergedWordInsights(from aggregates: [DailyKeyAggregate]) -> [WordInsight] {
+        var merged: [String: WordInsight] = [:]
+        for aggregate in aggregates {
+            for insight in aggregate.wordInsights {
+                var value = merged[insight.id] ?? insight
+                if merged[insight.id] != nil {
+                    value.count += insight.count
+                    value.totalDuration += insight.totalDuration
+                    value.editDistance += insight.editDistance
+                }
+                merged[insight.id] = value
+            }
+        }
+        return Array(merged.values.sorted {
+            if $0.kind != $1.kind { return $0.kind.rawValue < $1.kind.rawValue }
+            if $0.count != $1.count { return $0.count > $1.count }
+            return $0.word < $1.word
+        })
+    }
+
     var correctionProfile: CorrectionProfile {
         let sessionBackspaces = sessions.reduce(0) { $0 + $1.deletionCount }
         let sessionSpelling = sessions.reduce(0) { $0 + $1.spellingErrorWords }
@@ -112,7 +146,11 @@ final class AnalyticsStore: ObservableObject {
         let keyDescriptor = FetchDescriptor<DailyKeyAggregate>(predicate: #Predicate { $0.day == day })
         let aggregate = try context.fetch(keyDescriptor).first ?? DailyKeyAggregate(day: day)
         if aggregate.modelContext == nil { context.insert(aggregate) }
-        aggregate.merge(keyStats: summary.keyStats, confusions: summary.confusions)
+        aggregate.merge(
+            keyStats: summary.keyStats,
+            confusions: summary.confusions,
+            wordInsights: summary.wordInsights
+        )
     }
 
     func refresh() throws {

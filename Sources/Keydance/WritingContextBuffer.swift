@@ -3,7 +3,7 @@ import Foundation
 /// In-memory text and timing context for one active session.
 ///
 /// This type is intentionally not Codable. Raw text must not cross the runtime
-/// boundary into persisted analytics, logs, or training records by accident.
+/// boundary into persisted sentences, logs, or training records by accident.
 struct WritingContextSnapshot: Sendable, Equatable {
     /// Timing-only sentence boundaries. This intentionally carries no text.
     struct SentenceTiming: Sendable, Equatable {

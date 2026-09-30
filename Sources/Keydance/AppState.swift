@@ -16,6 +16,7 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(trackingEnabled, forKey: "trackingEnabled") }
     }
     @Published private(set) var dataRetention: DataRetention
+    @Published private(set) var whitelistedWords: Set<String>
     @Published var launchAtLogin = false
     @Published var lastError: String?
     @Published private(set) var permissionGranted = false
@@ -28,6 +29,7 @@ final class AppState: ObservableObject {
     private var processor: TrackingProcessor!
     private var monitor: EventTapMonitor!
     private var healthTimer: AnyCancellable?
+    private var storeChangeCancellable: AnyCancellable?
 
     init() {
         onboardingComplete = UserDefaults.standard.bool(forKey: "onboardingComplete")
@@ -35,6 +37,7 @@ final class AppState: ObservableObject {
         // Preserve existing history until the user explicitly chooses an
         // expiration window in Settings.
         dataRetention = DataRetention(rawValue: UserDefaults.standard.string(forKey: "dataRetention") ?? "") ?? .forever
+        whitelistedWords = WordWhitelist.words
         vocabulary = Vocabulary.load()
         do {
             store = try AnalyticsStore()
@@ -47,6 +50,9 @@ final class AppState: ObservableObject {
             try store.applyRetention(dataRetention)
         } catch {
             fatalError("Unable to create local analytics store: \(error)")
+        }
+        storeChangeCancellable = store.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
         }
         processor = TrackingProcessor(
             vocabulary: vocabulary,
@@ -149,6 +155,16 @@ final class AppState: ObservableObject {
             UserDefaults.standard.set(previous.rawValue, forKey: "dataRetention")
             lastError = "Could not update data retention: \(error.localizedDescription)"
         }
+    }
+
+    func whitelistWord(_ word: String) {
+        WordWhitelist.add(word)
+        whitelistedWords = WordWhitelist.words
+    }
+
+    func removeWhitelistedWord(_ word: String) {
+        WordWhitelist.remove(word)
+        whitelistedWords = WordWhitelist.words
     }
 
     func finishCurrentSession() {

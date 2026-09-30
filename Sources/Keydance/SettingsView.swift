@@ -75,13 +75,13 @@ struct SettingsView: View {
                 }
 
                 settingsSection("Privacy") {
-                    Text("Keydance stores statistical summaries only. It never persists typed words, sentences, application names, window titles, clipboard contents, or an ordered key history.")
+                    Text("Keydance stores statistical summaries only. Typing insights may retain bounded daily counters for frequently seen or flagged words, but never sentences, application names, window titles, clipboard contents, or an ordered key history.")
                         .font(.system(size: 12, design: .rounded))
                         .foregroundStyle(DashboardTheme.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.vertical, 10)
                     settingsDivider()
-                    Text("Historical charts use local daily summaries. No typed text is used to build them.")
+                    Text("Historical charts and the Insights page use local daily summaries. Raw typed text is used in memory only, then discarded.")
                         .font(.system(size: 12, design: .rounded))
                         .foregroundStyle(DashboardTheme.secondary)
                         .fixedSize(horizontal: false, vertical: true)

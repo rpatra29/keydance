@@ -53,6 +53,26 @@ struct ConfusionAggregate: Codable, Hashable, Sendable {
     var count: Int = 0
 }
 
+enum WordInsightKind: String, Codable, Hashable, Sendable, CaseIterable {
+    case frequentWord
+    case misspelling
+    case slowWord
+    case doubleLetter
+}
+
+/// A bounded, local aggregate. Raw sentences and their order never leave the typing engine.
+struct WordInsight: Codable, Hashable, Sendable, Identifiable {
+    var kind: WordInsightKind
+    var word: String
+    var suggestion: String
+    var count: Int = 0
+    var totalDuration: TimeInterval = 0
+    var editDistance: Int = 0
+
+    var id: String { "\(kind.rawValue)|\(word)|\(suggestion)" }
+    var averageDuration: TimeInterval { count > 0 ? totalDuration / Double(count) : 0 }
+}
+
 struct SessionSummary: Sendable {
     var kind: SessionKind
     var startedAt: Date
@@ -69,6 +89,7 @@ struct SessionSummary: Sendable {
     var betweenSentencePauses: [TimeInterval]
     var keyStats: [KeyAggregate]
     var confusions: [ConfusionAggregate]
+    var wordInsights: [WordInsight] = []
     var observationWindows: [SessionWindowObservation] = []
     var hmmModelVersion: Int = 0
     var modelBackend: String = "None"
