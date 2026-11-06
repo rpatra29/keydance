@@ -6,6 +6,12 @@ app identity, window titles, clipboard contents, or ordered key history. The
 optional Insights surface stores only bounded daily counters for a small set of
 frequent/flagged words and typing patterns; raw text remains in memory only.
 
+## Requirements
+
+- macOS 14 or later
+- Xcode or the Xcode command-line tools with a Swift 6 toolchain (`swift build`)
+- macOS tools used by `scripts/build-app.sh`: `sips`, `iconutil`, and `codesign`
+
 ## Run
 
 The recommended path builds and opens a signed macOS app bundle:
