@@ -10,7 +10,12 @@ frequent/flagged words and typing patterns; raw text remains in memory only.
 
 - macOS 14 or later
 - Xcode or the Xcode command-line tools with a Swift 6 toolchain (`swift build`)
-- macOS tools used by `scripts/build-app.sh`: `sips`, `iconutil`, and `codesign`
+- macOS tools used by `scripts/build-app.sh`: `sips`, `iconutil`, `codesign`, and `security`
+- `xcrun coremlcompiler` to compile `ml/SessionTextTransformer.mlpackage` when that package is present
+- `python3` (standard library only) for `scripts/convert-contextual-scorer.py`
+  when `ml/ContextualAccuracyScorer.pt` is present and either newer than
+  `Sources/Keydance/Resources/ContextualAccuracyScorer.weights` or that
+  weights file is missing
 
 ## Run
 
