@@ -71,6 +71,17 @@ codesign --verify --deep --strict dist/Keydance.app
 
 The build script creates and signs the runnable app bundle in `dist/`.
 
+## Troubleshooting
+
+If tracking stops after a rebuild (especially with an ad-hoc signature from
+`codesign --sign -`), macOS can treat the rebuilt app as different. Keydance
+may stop receiving key events even though it still appears enabled under
+**System Settings → Privacy & Security → Input Monitoring**.
+
+Remove Keydance from Input Monitoring and re-add it, or run
+`tccutil reset ListenEvent com.local.Keydance` and relaunch, then grant
+permission again.
+
 ## Vocabulary
 
 The bundled SymSpell frequency dictionary contains roughly 80,000 common
