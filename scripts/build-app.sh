@@ -49,12 +49,17 @@ if [[ "$bundled_model" == false ]]; then
     echo "No trained text model found; app will use the text-aware fallback"
 fi
 
-signing_identity="$(security find-identity -v -p codesigning 2>/dev/null | sed -n 's/.*"\(Apple Development:[^"]*\)".*/\1/p' | head -1)"
-if [[ -n "$signing_identity" ]]; then
-    codesign --force --deep --options runtime --sign "$signing_identity" "$app_path"
-    echo "Signed with $signing_identity"
+if [[ -n "${CODESIGN_IDENTITY:-}" ]]; then
+    codesign --force --deep --options runtime --sign "$CODESIGN_IDENTITY" "$app_path"
+    echo "Signed with $CODESIGN_IDENTITY"
 else
-    codesign --force --deep --sign - "$app_path"
-    echo "No Apple Development identity found; used an ad-hoc signature"
+    signing_identity="$(security find-identity -v -p codesigning 2>/dev/null | sed -n 's/.*"\(Apple Development:[^"]*\)".*/\1/p' | head -1)"
+    if [[ -n "$signing_identity" ]]; then
+        codesign --force --deep --options runtime --sign "$signing_identity" "$app_path"
+        echo "Signed with $signing_identity"
+    else
+        codesign --force --deep --sign - "$app_path"
+        echo "No Apple Development identity found; used an ad-hoc signature"
+    fi
 fi
 echo "Built $app_path"
