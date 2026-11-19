@@ -19,6 +19,13 @@ frequent/flagged words and typing patterns; raw text remains in memory only.
 
 ## Run
 
+Clone the repository and enter its directory first:
+
+```sh
+git clone https://github.com/rpatra29/keydance.git
+cd keydance
+```
+
 The recommended path builds and opens a signed macOS app bundle:
 
 ```sh
