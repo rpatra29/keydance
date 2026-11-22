@@ -85,9 +85,11 @@ If tracking stops after a rebuild (especially with an ad-hoc signature from
 may stop receiving key events even though it still appears enabled under
 **System Settings → Privacy & Security → Input Monitoring**.
 
-To sign with a chosen identity, run
+The build script uses `CODESIGN_IDENTITY` when provided; otherwise, it selects
+an available Apple Development identity or falls back to ad-hoc signing. To
+choose an identity explicitly, run
 `CODESIGN_IDENTITY="Apple Development: Name (TEAMID)" ./scripts/build-app.sh`.
-A stable identity avoids re-granting Input Monitoring after rebuilds.
+A stable identity can help preserve Input Monitoring access across rebuilds.
 
 Remove Keydance from Input Monitoring and re-add it, or run
 `tccutil reset ListenEvent com.local.Keydance` and relaunch, then grant
