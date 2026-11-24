@@ -32,6 +32,13 @@ The recommended path builds and opens a signed macOS app bundle:
 ./scripts/run.sh
 ```
 
+`run.sh` rebuilds the app each time. After a successful build, you can reopen
+that existing bundle without rebuilding from the repository directory:
+
+```sh
+open dist/Keydance.app
+```
+
 On first launch, allow Keydance under **System Settings → Privacy & Security →
 Input Monitoring**. Keydance can keep tracking from the menu bar while the
 dashboard window is closed.
