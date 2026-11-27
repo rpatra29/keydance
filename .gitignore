@@ -11,8 +11,8 @@ DerivedData/
 .venv/
 ml/.venv/
 .context/
-# Keep local model-training code/data out of the app repository. The final
-# contextual-accuracy model is the one tracked app asset.
+# Ignore local model-training files by default; the model checkpoint,
+# SessionTextTransformer package, and metadata below are explicit exceptions.
 /ml/*
 !/ml/ContextualAccuracyScorer.pt
 !/ml/SessionTextTransformer.mlpackage/
